@@ -13,5 +13,5 @@ output "chat_api_image" {
 output "try_it" {
   type        = string
   description = "Call the chat API."
-  value       = "curl -s -X POST ${component.chat_api.url}/chat -H 'content-type: application/json' -d '{\"message\":\"Hello from AKS Automatic\"}'"
+  value       = component.chat_api.url == null ? null : "curl -s -X POST ${component.chat_api.url}/chat -H 'content-type: application/json' -d '{\"message\":\"Hello from AKS Automatic\"}'"
 }
