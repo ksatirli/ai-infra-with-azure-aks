@@ -36,7 +36,7 @@ variable "tfe_hostname" {
 variable "tfe_organization" {
   type        = string
   description = "HCP Terraform organization."
-  default     = "a-demo-organization"
+  default     = "ksatirli"
 }
 
 variable "tfe_project" {
