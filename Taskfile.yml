@@ -1,0 +1,263 @@
+---
+
+# Self-contained on purpose: this repository is a standalone demo, so nothing here
+# includes shared taskfiles from a sibling checkout.
+
+# see https://taskfile.dev/docs/reference/schema#version
+version: '3'
+
+# see https://taskfile.dev/docs/reference/schema#env
+env:
+  # see https://developer.hashicorp.com/terraform/tutorials/automation/automate-terraform
+  TF_IN_AUTOMATION: '1'
+  # see https://developer.hashicorp.com/terraform/cli/commands#upgrade-and-security-bulletin-checks
+  CHECKPOINT_DISABLE: '1'
+  # see https://developer.hashicorp.com/terraform/internals/debugging
+  TF_LOG: '{{.TF_LOG}}'
+  # see https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache
+  TF_PLUGIN_CACHE_DIR:
+    sh: echo "${TF_PLUGIN_CACHE_DIR:-$HOME/.terraform.d/plugin-cache}"
+
+# see https://taskfile.dev/docs/reference/schema#vars
+vars:
+  BOOTSTRAP_DIR: 'bootstrap'
+  CONTAINER_CONTEXT: 'app'
+  CONTAINER_IMAGE: '{{.CONTAINER_IMAGE | default "chat-api"}}'
+  CONTAINER_RUNTIME: '{{.CONTAINER_RUNTIME | default "podman"}}'
+  CONTAINER_VERSION:
+    sh: cat app/VERSION
+  # Both inputs come from the operator's own CLI sessions, exactly as the README's
+  # bootstrap does, so no token is written to disk.
+  TF_BOOTSTRAP_ENV: >-
+    TF_VAR_github_token="$(gh auth token)"
+    TF_VAR_subscription_id="$(az account show --query id -o tsv)"
+  # Platforms `providers-lock` records checksums for. HCP Terraform executes on
+  # linux_amd64; operators are on Apple Silicon. darwin_amd64 covers an Intel Mac.
+  TF_LOCK_PLATFORMS: '{{.TF_LOCK_PLATFORMS | default "linux_amd64 darwin_arm64 darwin_amd64"}}'
+  TF_LOG: '{{.TF_LOG | default ""}}'
+  TF_PARALLELISM: '{{.TF_PARALLELISM | default "10"}}'
+  WORKFLOW: 'build-chat-api'
+
+# see https://taskfile.dev/docs/reference/schema#task
+tasks:
+  default:
+    cmds:
+      - task --list
+    desc: 'List available tasks'
+    silent: true
+
+  preflight:
+    cmds:
+      # ensure the shared provider plugin cache exists before any init
+      - mkdir -p "$TF_PLUGIN_CACHE_DIR"
+    internal: true
+    preconditions:
+      - sh: command -v terraform >/dev/null
+        msg: 'Terraform is required'
+    silent: true
+
+  # The bootstrap reads the operator's az and gh sessions, so check both are live
+  # before Terraform starts rather than fail halfway through a plan.
+  preflight-bootstrap:
+    deps:
+      - preflight
+    internal: true
+    preconditions:
+      - sh: command -v az >/dev/null
+        msg: 'Azure CLI is required (brew install azure-cli)'
+      - sh: az account show >/dev/null 2>&1
+        msg: 'Azure CLI is not logged in (az login)'
+      - sh: command -v gh >/dev/null
+        msg: 'GitHub CLI is required (brew install gh)'
+      - sh: gh auth token >/dev/null 2>&1
+        msg: 'GitHub CLI is not authenticated (gh auth login)'
+    silent: true
+
+  # --- bootstrap/ (local Terraform root) ---------------------------------------
+
+  # Deliberately NOT `-upgrade`: a routine init must not re-resolve provider
+  # versions past the lock file. Bumps go through `bootstrap-upgrade`.
+  bootstrap-init:
+    cmds:
+      - terraform init
+    deps:
+      - preflight
+    desc: 'Run `terraform init` in bootstrap/'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    silent: true
+
+  bootstrap-plan:
+    cmds:
+      - |
+        {{.TF_BOOTSTRAP_ENV}} \
+          terraform \
+            plan \
+              -parallelism={{.TF_PARALLELISM}}
+    deps:
+      - preflight-bootstrap
+    desc: 'Run `terraform plan` in bootstrap/ with az and gh credentials'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    silent: true
+
+  bootstrap-apply:
+    cmds:
+      - |
+        {{.TF_BOOTSTRAP_ENV}} \
+          terraform \
+            apply \
+              -parallelism={{.TF_PARALLELISM}}
+    deps:
+      - preflight-bootstrap
+    desc: 'Run `terraform apply` in bootstrap/ with az and gh credentials'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    interactive: true
+    silent: true
+
+  bootstrap-destroy:
+    cmds:
+      - |
+        {{.TF_BOOTSTRAP_ENV}} \
+          terraform \
+            destroy
+    deps:
+      - preflight-bootstrap
+    desc: 'Run `terraform destroy` in bootstrap/ with az and gh credentials'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    interactive: true
+    silent: true
+
+  bootstrap-output:
+    cmds:
+      - terraform output
+    deps:
+      - preflight
+    desc: 'Run `terraform output` in bootstrap/'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    silent: true
+
+  # Don't split the re-lock from this: `init -upgrade` records checksums only for
+  # the local platform.
+  bootstrap-upgrade:
+    cmds:
+      - terraform init -upgrade
+      - |
+        platform_flags=""
+        for platform in {{.TF_LOCK_PLATFORMS}}; do
+          platform_flags="$platform_flags -platform=$platform"
+        done
+        terraform providers lock $platform_flags
+    deps:
+      - preflight
+    desc: 'Run `terraform init -upgrade` in bootstrap/, then re-lock every platform'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    silent: true
+
+  # Backend-less init so validate works on a fresh clone without touching state.
+  bootstrap-validate:
+    cmds:
+      - terraform init -backend=false -input=false >/dev/null
+      - terraform validate
+    deps:
+      - preflight
+    desc: 'Run `terraform validate` in bootstrap/'
+    dir: '{{.BOOTSTRAP_DIR}}'
+    silent: true
+
+  # --- Terraform Stack (repository root) ----------------------------------------
+
+  stacks-fmt:
+    aliases:
+      - s-fmt
+    cmds:
+      - terraform stacks fmt
+    deps:
+      - preflight
+    desc: 'Run `terraform stacks fmt`'
+    silent: true
+
+  stacks-init:
+    aliases:
+      - s-init
+    cmds:
+      - terraform stacks init
+    deps:
+      - preflight
+    desc: 'Run `terraform stacks init`'
+    silent: true
+
+  stacks-providers-lock:
+    aliases:
+      - s-p-lock
+    cmds:
+      - terraform stacks providers-lock -platform='{{.platform}}'
+    deps:
+      - preflight
+    desc: 'Run `terraform stacks providers-lock`'
+    silent: true
+    vars:
+      platform: '{{.platform | default "linux_amd64"}}'
+
+  stacks-validate:
+    aliases:
+      - s-validate
+    cmds:
+      - terraform stacks validate
+    deps:
+      - preflight
+    desc: 'Run `terraform stacks validate`'
+    silent: true
+
+  # --- everything ---------------------------------------------------------------
+
+  fmt:
+    cmds:
+      - terraform fmt -recursive
+      - task: stacks-fmt
+    deps:
+      - preflight
+    desc: 'Run `terraform fmt` on every module and `terraform stacks fmt` on the Stack'
+    silent: true
+
+  validate:
+    cmds:
+      - terraform fmt -recursive -check
+      - task: bootstrap-validate
+      - task: stacks-validate
+    deps:
+      - preflight
+    desc: 'Check formatting, then validate bootstrap/ and the Stack'
+    silent: true
+
+  # --- chat API image -----------------------------------------------------------
+
+  container-build:
+    cmds:
+      - |
+        {{.CONTAINER_RUNTIME}} \
+          build \
+            --tag {{.CONTAINER_IMAGE}}:{{.CONTAINER_VERSION}} \
+            {{.CONTAINER_CONTEXT}}
+    desc: 'Build the chat API image locally (no push; CI pushes to ACR)'
+    preconditions:
+      - sh: command -v {{.CONTAINER_RUNTIME}} >/dev/null
+        msg: '{{.CONTAINER_RUNTIME}} is required (or set CONTAINER_RUNTIME=docker)'
+    silent: true
+
+  # The image is pushed only by GitHub Actions, through OIDC, so this triggers the
+  # workflow instead of pushing from the laptop.
+  workflow-run:
+    cmds:
+      - gh workflow run {{.WORKFLOW}}
+      - echo "queued {{.WORKFLOW}}; follow it with 'task workflow-watch'"
+    desc: 'Trigger the build-chat-api workflow on GitHub Actions'
+    preconditions:
+      - sh: command -v gh >/dev/null
+        msg: 'GitHub CLI is required (brew install gh)'
+    silent: true
+
+  workflow-watch:
+    cmds:
+      - gh run watch "$(gh run list --workflow {{.WORKFLOW}} --limit 1 --json databaseId --jq '.[0].databaseId')"
+    desc: 'Follow the latest build-chat-api workflow run'
+    interactive: true
+    silent: true
