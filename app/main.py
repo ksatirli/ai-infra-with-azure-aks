@@ -1,11 +1,4 @@
-"""Chat API that calls IBM Granite on Microsoft Foundry managed compute.
-
-There is no API key. On AKS, the workload identity webhook injects
-AZURE_CLIENT_ID, AZURE_TENANT_ID and AZURE_FEDERATED_TOKEN_FILE into the pod,
-and DefaultAzureCredential exchanges the projected service account token for an
-Entra ID token. Foundry serves the Granite deployment behind its OpenAI-compatible
-v1 API, where the model field is the deployment name.
-"""
+"""Chat API that calls IBM Granite on Microsoft Foundry managed compute."""
 
 import os
 
@@ -18,7 +11,6 @@ BASE_URL = os.environ["FOUNDRY_BASE_URL"]
 DEPLOYMENT = os.environ["FOUNDRY_DEPLOYMENT"]
 TOKEN_SCOPE = os.environ.get("FOUNDRY_TOKEN_SCOPE", "https://cognitiveservices.azure.com/.default")
 
-# A callable api_key is called per request, so tokens refresh on their own.
 client = OpenAI(
     base_url=BASE_URL,
     api_key=get_bearer_token_provider(DefaultAzureCredential(), TOKEN_SCOPE),
