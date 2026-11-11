@@ -243,6 +243,26 @@ tasks:
         msg: '{{.CONTAINER_RUNTIME}} is required (or set CONTAINER_RUNTIME=docker)'
     silent: true
 
+  # requirements.in holds the direct pins; requirements.txt is the hash-locked
+  # result that the Dockerfile installs with --require-hashes.
+  requirements-lock:
+    cmds:
+      - |
+        uv pip compile \
+          {{.CONTAINER_CONTEXT}}/requirements.in \
+            --custom-compile-command 'task requirements-lock' \
+            --generate-hashes \
+            --output-file {{.CONTAINER_CONTEXT}}/requirements.txt \
+            --python-platform linux \
+            --python-version 3.13 \
+            --quiet
+    desc: 'Regenerate the hash-pinned app/requirements.txt from app/requirements.in'
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: command -v uv >/dev/null
+        msg: 'uv is required (brew install uv)'
+    silent: true
+
   # The image is pushed only by GitHub Actions, through OIDC, so this triggers the
   # workflow instead of pushing from the laptop.
   workflow-run:

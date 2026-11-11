@@ -19,8 +19,6 @@ module "stack_identity" {
   }
 }
 
-# GitHub issues immutable OIDC subjects that embed the owner and repository IDs
-# (`repo:OWNER@ID/REPO@ID:...`), so the federated credential has to carry them.
 # see https://registry.terraform.io/providers/integrations/github/latest/docs/data-sources/user
 data "github_user" "owner" {
   username = var.github_owner
