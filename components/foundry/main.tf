@@ -45,6 +45,7 @@ resource "azapi_resource" "granite" {
 
     properties = {
       model                = var.model.uri
+      deploymentTemplate   = var.model.deployment_template
       acceleratorType      = var.model.accelerator_type
       versionUpgradeOption = "OnceNewDefaultVersionAvailable"
     }

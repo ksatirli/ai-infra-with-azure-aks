@@ -5,7 +5,7 @@ Microsoft Foundry and an AKS Automatic workload that uses it, with an HCP Terraf
 Stack and Azure Verified Modules, in a way that no secret reaches the pipeline.
 
 - **Microsoft Foundry** (PaaS) hosts the model: an AI Services account with
-  API keys disabled, one project and **IBM Granite 4.1 8B** on Foundry
+  API keys disabled, one project and **IBM Granite 4.2 30B** on Foundry
   **managed compute** (one dedicated A100, served through the account's
   OpenAI-compatible endpoint).
 - **AKS Automatic** runs a small chat API that calls Foundry using
@@ -180,10 +180,13 @@ To change the Stack locally, run `terraform stacks init` and
 
 - **Region:** West US 3 (Phoenix) is the closest Azure region to Salt Lake City with
   availability zones, which AKS Automatic requires.
-- **Model:** `var.model.uri` in `components/foundry` defaults to
-  `azureml://registries/HuggingFace/models/ibm-granite-granite-4.1-8b/versions/1`.
-  Confirm the asset name and current version in the Foundry catalog ("Use this model")
-  before the first apply; the URI is immutable once deployed.
+- **Model:** `var.model` in `components/foundry` defaults to
+  `azureml://registries/azure-huggingface/models/ibm-granite--granite-4.2-30b/versions/1`
+  with the single-A100 64k deployment template. Managed compute serves only the
+  `azure-huggingface` registry; Granite 4.1 8B is not in it. List the options with
+  `az ml model list --registry-name azure-huggingface` and read a model's
+  `allowed_deployment_templates` with `az ml model show`; the model URI is immutable
+  once deployed.
 - **GPU quota:** managed compute has its own quota per accelerator family, separate
   from VM quota. Check it, and request more A100 quota if the limit is 0:
 
