@@ -140,8 +140,8 @@ TF_VAR_github_token="$(gh auth token)" \
 TF_VAR_subscription_id="$(az account show --query id -o tsv)" \
 terraform apply
 
-# 2. HCP Terraform fetches the Stack configuration and plans the westus3
-#    deployment. Approve it in the UI; the deferred chat_api plan follows.
+# 2. HCP Terraform fetches the Stack configuration, plans the westus3
+#    deployment and auto-approves it; the deferred chat_api plan follows.
 
 # 3. Build and push the image
 gh workflow run build-chat-api
