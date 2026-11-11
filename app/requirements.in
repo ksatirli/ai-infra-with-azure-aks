@@ -1,4 +1,4 @@
-azure-identity==1.21.0
-fastapi==0.115.12
-openai==1.109.1
-uvicorn==0.34.2
+azure-identity==1.27.0
+fastapi==0.162.4
+openai==3.49.0
+uvicorn==0.54.0
