@@ -38,5 +38,5 @@ deployment "westus3" {
     registry_name     = store.varset.bootstrap.stable.registry_name
   }
 
-  deployment_group = "deployment_group.westus3"
+  deployment_group = deployment_group.westus3
 }
