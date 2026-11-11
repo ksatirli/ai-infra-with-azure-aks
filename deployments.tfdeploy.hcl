@@ -17,6 +17,11 @@ deployment_auto_approve "successful_plan" {
   }
 }
 
+# see https://developer.hashicorp.com/terraform/language/block/stack/tfdeploy/deployment_group
+deployment_group "westus3" {
+  auto_approve_checks = [deployment_auto_approve.successful_plan]
+}
+
 # see https://developer.hashicorp.com/terraform/language/block/stack/tfdeploy/deployment
 deployment "westus3" {
   inputs = {
@@ -33,5 +38,5 @@ deployment "westus3" {
     registry_name     = store.varset.bootstrap.stable.registry_name
   }
 
-  auto_approve_checks = [deployment_auto_approve.successful_plan]
+  deployment_group = "deployment_group.westus3"
 }
