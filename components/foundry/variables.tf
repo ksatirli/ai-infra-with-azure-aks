@@ -28,7 +28,7 @@ variable "model" {
   description = "Granite model to deploy on Foundry managed compute."
   default = {
     deployment_name  = "granite"
-    uri              = "azureml://registries/azure-huggingface/models/ibm-granite-granite-4.1-8b/versions/1"
+    uri              = "azureml://registries/HuggingFace/models/ibm-granite-granite-4.1-8b/versions/1"
     accelerator_type = "A100_80GB"
     instances        = 1
   }

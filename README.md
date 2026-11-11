@@ -181,7 +181,7 @@ To change the Stack locally, run `terraform stacks init` and
 - **Region:** West US 3 (Phoenix) is the closest Azure region to Salt Lake City with
   availability zones, which AKS Automatic requires.
 - **Model:** `var.model.uri` in `components/foundry` defaults to
-  `azureml://registries/azure-huggingface/models/ibm-granite-granite-4.1-8b/versions/1`.
+  `azureml://registries/HuggingFace/models/ibm-granite-granite-4.1-8b/versions/1`.
   Confirm the asset name and current version in the Foundry catalog ("Use this model")
   before the first apply; the URI is immutable once deployed.
 - **GPU quota:** managed compute has its own quota per accelerator family, separate
