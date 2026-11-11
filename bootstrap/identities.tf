@@ -19,6 +19,27 @@ module "stack_identity" {
   }
 }
 
+# GitHub issues immutable OIDC subjects that embed the owner and repository IDs
+# (`repo:OWNER@ID/REPO@ID:...`), so the federated credential has to carry them.
+# see https://registry.terraform.io/providers/integrations/github/latest/docs/data-sources/user
+data "github_user" "owner" {
+  username = var.github_owner
+}
+
+# see https://registry.terraform.io/providers/integrations/github/latest/docs/data-sources/repository
+data "github_repository" "demo" {
+  full_name = "${var.github_owner}/${var.github_repository}"
+}
+
+locals {
+  github_subject = join(":", [
+    "repo",
+    "${var.github_owner}@${data.github_user.owner.id}/${var.github_repository}@${data.github_repository.demo.repo_id}",
+    "environment",
+    github_repository_environment.production.environment,
+  ])
+}
+
 # see https://registry.terraform.io/modules/Azure/avm-res-managedidentity-userassignedidentity/azurerm/latest
 module "github_actions_identity" {
   source  = "Azure/avm-res-managedidentity-userassignedidentity/azurerm"
@@ -35,7 +56,7 @@ module "github_actions_identity" {
       name     = "github-${var.github_repository}-${var.github_environment}"
       issuer   = "https://token.actions.githubusercontent.com"
       audience = ["api://AzureADTokenExchange"]
-      subject  = "repo:${var.github_owner}/${var.github_repository}:environment:${github_repository_environment.production.environment}"
+      subject  = local.github_subject
     }
   }
 }

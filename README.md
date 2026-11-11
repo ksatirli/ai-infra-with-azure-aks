@@ -95,7 +95,7 @@ a short-lived Entra ID token, and that exchange only works for one exact subject
 | Caller | Token issuer | Trusted subject | Azure identity | Can do |
 | --- | --- | --- | --- | --- |
 | Stack plan / apply | `app.terraform.io` | `organization:ksatirli:project:ai-infra-with-azure-aks:stack:ai-infra:deployment:westus3:operation:{plan,apply}` | stack | Contributor and AKS RBAC Cluster Admin on the workload resource group; may assign only `AcrPull` and `Foundry User` |
-| Image build | `token.actions.githubusercontent.com` | `repo:ksatirli/ai-infra-with-azure-aks:environment:production` | github-actions | Reader and `AcrPush` on the workload resource group |
+| Image build | `token.actions.githubusercontent.com` | `repo:ksatirli@<owner id>/ai-infra-with-azure-aks@<repo id>:environment:production` (GitHub's immutable subject) | github-actions | Reader and `AcrPush` on the workload resource group |
 | chat-api pod | AKS OIDC issuer | `system:serviceaccount:chat:chat-api` | chat-api | `Foundry User` (formerly `Azure AI User`) on the Foundry account |
 
 Identities live in their own resource group, so the Stack cannot change its own
