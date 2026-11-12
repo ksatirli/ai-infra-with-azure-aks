@@ -39,4 +39,7 @@ deployment "westus3" {
   }
 
   deployment_group = deployment_group.westus3
+
+  # see https://developer.hashicorp.com/terraform/language/block/stack/tfdeploy/deployment#destroy
+  destroy = true
 }
